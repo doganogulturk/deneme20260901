@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+.map svg {
+  display: block;
+  width: 100%;
+  max-height: calc(100vh - 6rem);
+  height: auto;
+  margin: auto;
+}
+
+@media (max-width: 640px) {
+  .map svg {
+    max-height: calc(100vh - 11rem);
+  }
+}
+
+.map g[data-plakakodu],
+.map [data-country-code] {
+  cursor: pointer;
+  outline: none;
+}
+
+.map g[data-plakakodu] path,
+.map [data-country-code] {
+  fill: #e2e8f0;
+  stroke: #94a3b8;
+  stroke-width: 0.75;
+  transition: fill 160ms ease, stroke 160ms ease, opacity 160ms ease;
+}
+
+.map g[data-plakakodu]:not(.map-correct):not(.map-incorrect):hover path,
+.map g[data-plakakodu]:not(.map-correct):not(.map-incorrect):focus path,
+.map [data-country-code]:not(.map-correct):not(.map-incorrect):hover,
+.map [data-country-code]:not(.map-correct):not(.map-incorrect):focus {
+  fill: #67e8f9;
+  stroke: #0891b2;
+}
+
+.map g.map-correct path,
+.map .map-correct {
+  fill: #34d399 !important;
+  stroke: #047857 !important;
+}
+
+.map g.map-incorrect path,
+.map .map-incorrect {
+  fill: #fb7185 !important;
+  stroke: #be123c !important;
+}
