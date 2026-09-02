@@ -1,4 +1,4 @@
-# Plaka Peşinde
+# Harita Avcısı
 
 Türkiye şehirleri ve plaka kodları için 10 soruluk, mobil uyumlu bir eşleştirme oyunu.
 
