@@ -43,5 +43,8 @@ next-env.d.ts
 # graphify-axet
 .graphify/
 
+# claude code (yerel arac gereci)
+.claude/
+
 # env example (opt-in)
 !.env.example

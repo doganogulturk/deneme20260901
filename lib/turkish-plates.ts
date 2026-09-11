@@ -1,3 +1,5 @@
+import { shuffle } from "./shuffle";
+
 export type Province = {
   city: string;
   plate: number;
@@ -33,18 +35,6 @@ export const provinces: Province[] = [
   { city: "Kilis", plate: 79 }, { city: "Osmaniye", plate: 80 }, { city: "Düzce", plate: 81 },
 ];
 
-export function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
-}
-
 export function createRound(): Province[] {
   return shuffle(provinces).slice(0, 10);
-}
-
-export function choicesFor(province: Province): number[] {
-  const alternatives = shuffle(provinces.filter((item) => item.plate !== province.plate))
-    .slice(0, 3)
-    .map((item) => item.plate);
-
-  return shuffle([province.plate, ...alternatives]);
 }

@@ -42,6 +42,9 @@ alter table public.game_results
 create index if not exists game_results_user_id_game_mode_score_created_at_idx
 on public.game_results (user_id, game_mode, score desc, duration_ms asc, best_streak desc, created_at asc);
 
+create index if not exists game_results_game_mode_score_idx
+on public.game_results (game_mode, score desc, duration_ms asc, best_streak desc, created_at asc);
+
 alter table public.game_results enable row level security;
 
 drop policy if exists "Users can read their own results" on public.game_results;
@@ -65,7 +68,7 @@ drop view if exists public.leaderboard;
 create view public.leaderboard
 with (security_invoker = true)
 as
-select distinct on (user_id)
+select distinct on (user_id, game_mode)
   user_id,
   display_name,
   avatar_url,
