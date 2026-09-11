@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LOCATION_SELECTOR, MAP_URLS, MODE_COPY, type GameMode } from "@/lib/game";
+import { LOCATION_SELECTOR, MAP_LABELS, MAP_URLS, type GameMode } from "@/lib/game";
 
 const markupCache = new Map<GameMode, string>();
 const pendingLoads = new Map<GameMode, Promise<string>>();
@@ -25,7 +25,7 @@ async function fetchMapMarkup(mode: GameMode): Promise<string> {
     location.setAttribute("tabindex", "0");
   });
 
-  svg.setAttribute("aria-label", MODE_COPY[mode].mapLabel);
+  svg.setAttribute("aria-label", MAP_LABELS[mode]);
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   return svg.outerHTML;
 }

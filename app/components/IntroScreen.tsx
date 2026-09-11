@@ -1,12 +1,21 @@
-import Image from "next/image";
-import { GAME_DURATION_SECONDS, type GameMode, type Player } from "@/lib/game";
-import { countryCount, type WorldDifficulty } from "@/lib/world-countries";
+import { AuthPanel } from "./AuthPanel";
+import { PlayButton } from "./PlayButton";
+import { PlayerBadge } from "./PlayerBadge";
+import { choiceLabel, GAME_DURATION_SECONDS, type GameMode, type PlayChoice, type Player } from "@/lib/game";
 import { provinces } from "@/lib/turkish-plates";
+import { countryCount } from "@/lib/world-countries";
 
 type IntroScreenProps = {
   player: Player | null;
   readyModes: GameMode[];
-  onPlay: (mode: GameMode, difficulty: WorldDifficulty) => void;
+  pendingChoice: PlayChoice | null;
+  isSigningIn: boolean;
+  authError: string | null;
+  supabaseConfigured: boolean;
+  onPlay: (choice: PlayChoice) => void;
+  onCancelPendingChoice: () => void;
+  onGoogleSignIn: () => void;
+  onGuestSignIn: (name: string) => void;
   onSignOut: () => void;
 };
 
@@ -15,25 +24,6 @@ const RULES = [
   { title: `${GAME_DURATION_SECONDS} saniye`, detail: "Süre biterse tur olduğu yerde kapanır." },
   { title: "Hız önemli", detail: "Eşit puanda daha hızlı biten üst sırada yer alır." },
 ];
-
-const BUTTON_BASE =
-  "inline-flex items-center gap-1.5 rounded-full py-2 pr-3 pl-4 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:gap-3 hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-wait disabled:opacity-50 disabled:hover:gap-1.5 disabled:hover:shadow-sm";
-
-const BUTTON_TONE = {
-  normal: "bg-cyan-600 hover:bg-cyan-500 hover:shadow-cyan-600/30 focus-visible:ring-cyan-300",
-  hard: "bg-gradient-to-r from-cyan-600 via-orange-500 to-rose-600 hover:from-cyan-500 hover:via-orange-400 hover:to-rose-500 hover:shadow-rose-600/30 focus-visible:ring-rose-300",
-};
-
-function PlayButton({ label, tone, disabled, onClick }: { label: string; tone: keyof typeof BUTTON_TONE; disabled: boolean; onClick: () => void }) {
-  return (
-    <button className={`${BUTTON_BASE} ${BUTTON_TONE[tone]}`} disabled={disabled} onClick={onClick} type="button">
-      {label}
-      <svg aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-        <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </button>
-  );
-}
 
 function ModeCard({ badge, children, detail, isReady, title }: { badge: string; children: React.ReactNode; detail: string; isReady: boolean; title: string }) {
   return (
@@ -51,7 +41,19 @@ function ModeCard({ badge, children, detail, isReady, title }: { badge: string; 
   );
 }
 
-export function IntroScreen({ player, readyModes, onPlay, onSignOut }: IntroScreenProps) {
+export function IntroScreen({
+  player,
+  readyModes,
+  pendingChoice,
+  isSigningIn,
+  authError,
+  supabaseConfigured,
+  onPlay,
+  onCancelPendingChoice,
+  onGoogleSignIn,
+  onGuestSignIn,
+  onSignOut,
+}: IntroScreenProps) {
   const isTurkeyReady = readyModes.includes("turkey");
   const isWorldReady = readyModes.includes("world");
 
@@ -66,35 +68,7 @@ export function IntroScreen({ player, readyModes, onPlay, onSignOut }: IntroScre
               sıralamaya işleniyor.
             </p>
           </div>
-          {player && (
-            <div className="flex shrink-0 items-center gap-3">
-              <div className="hidden text-right sm:block">
-                <p className="max-w-[12rem] truncate text-sm font-bold text-slate-700" title={player.name}>{player.name}</p>
-                <button
-                  className="text-xs font-semibold text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
-                  onClick={onSignOut}
-                  type="button"
-                >
-                  Çıkış yap
-                </button>
-              </div>
-              {player.avatarUrl ? (
-                <Image
-                  alt=""
-                  className="h-10 w-10 shrink-0 rounded-full border border-cyan-200 object-cover"
-                  height={40}
-                  referrerPolicy="no-referrer"
-                  src={player.avatarUrl}
-                  unoptimized
-                  width={40}
-                />
-              ) : (
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-base font-bold text-cyan-700">
-                  {player.name.slice(0, 1).toUpperCase()}
-                </span>
-              )}
-            </div>
-          )}
+          <PlayerBadge onSignOut={onSignOut} player={player} />
         </div>
 
         <dl className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -106,30 +80,64 @@ export function IntroScreen({ player, readyModes, onPlay, onSignOut }: IntroScre
           ))}
         </dl>
 
-        <p className="mt-8 text-xs font-semibold tracking-[0.2em] text-cyan-700 uppercase">Harita seç</p>
-        <div className="mt-3 grid items-stretch gap-3 sm:grid-cols-2">
-          <ModeCard
-            badge={`${provinces.length} il`}
-            detail="81 il arasından rastgele gelen şehri haritada bul."
-            isReady={isTurkeyReady}
-            title="Türkiye"
-          >
-            <PlayButton disabled={!isTurkeyReady} label="Oyna" onClick={() => onPlay("turkey", "normal")} tone="normal" />
-          </ModeCard>
+        {pendingChoice && !player ? (
+          <div className="mt-8">
+            <AuthPanel
+              authError={authError}
+              choiceLabel={choiceLabel(pendingChoice)}
+              isSigningIn={isSigningIn}
+              onCancel={onCancelPendingChoice}
+              onGoogleSignIn={onGoogleSignIn}
+              onGuestSignIn={onGuestSignIn}
+              supabaseConfigured={supabaseConfigured}
+            />
+          </div>
+        ) : pendingChoice ? (
+          // Google girişinden dönüldü: seçim korundu, ama zamanlı turu kullanıcı hazırken başlatıyoruz.
+          <div className="mt-8 rounded-2xl border-2 border-cyan-200 bg-cyan-50/60 p-5 sm:p-6">
+            <p className="text-lg font-bold text-slate-900">
+              Giriş tamam — <span className="text-cyan-700">{choiceLabel(pendingChoice)}</span> turun hazır
+            </p>
+            <p className="mt-1 text-sm text-slate-600">Başla dediğin anda {GAME_DURATION_SECONDS} saniyelik süre işlemeye başlar.</p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <PlayButton
+                disabled={!readyModes.includes(pendingChoice.mode)}
+                label="Başla"
+                onClick={() => onPlay(pendingChoice)}
+                tone={pendingChoice.difficulty === "hard" ? "red" : "green"}
+              />
+              <button
+                className="text-xs font-semibold text-slate-500 underline-offset-2 transition hover:text-cyan-700 hover:underline"
+                onClick={onCancelPendingChoice}
+                type="button"
+              >
+                Başka bir harita seç
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-8 text-xs font-semibold tracking-[0.2em] text-cyan-700 uppercase">Harita seç</p>
+            <div className="mt-3 grid items-stretch gap-3 sm:grid-cols-2">
+              <ModeCard badge={`${provinces.length} il`} detail="81 il arasından rastgele gelen şehri haritada bul." isReady={isTurkeyReady} title="Türkiye">
+                <PlayButton disabled={!isTurkeyReady} label="Oyna" onClick={() => onPlay({ mode: "turkey", difficulty: "normal" })} />
+              </ModeCard>
 
-          <ModeCard
-            badge={`${countryCount("hard")} ülke`}
-            detail="Soruda gelen ülkenin dünya haritasındaki yerini seç."
-            isReady={isWorldReady}
-            title="Dünya"
-          >
-            <PlayButton disabled={!isWorldReady} label="Normal" onClick={() => onPlay("world", "normal")} tone="normal" />
-            <PlayButton disabled={!isWorldReady} label="Zor" onClick={() => onPlay("world", "hard")} tone="hard" />
-            <span className="w-full text-xs text-slate-400">
-              Normal {countryCount("normal")} tanınmış ülke, Zor {countryCount("hard")} ülkenin tamamı.
-            </span>
-          </ModeCard>
-        </div>
+              <ModeCard
+                badge={`${countryCount("hard")} ülke`}
+                detail="Soruda gelen ülkenin dünya haritasındaki yerini seç."
+                isReady={isWorldReady}
+                title="Dünya"
+              >
+                <PlayButton disabled={!isWorldReady} label="Normal" onClick={() => onPlay({ mode: "world", difficulty: "normal" })} />
+                <PlayButton disabled={!isWorldReady} label="Zor" onClick={() => onPlay({ mode: "world", difficulty: "hard" })} tone="red" />
+                <span className="w-full text-xs text-slate-400">
+                  Normal: Sadece çok bilinen ülkeler. Zor: {countryCount("hard")} ülkenin tamamı.
+                </span>
+              </ModeCard>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

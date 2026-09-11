@@ -2,23 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { LEADERBOARD_LIMIT, type GameMode, type LeaderboardEntry, type Player } from "@/lib/game";
+import { BOARDS, boardIdFor, LEADERBOARD_LIMIT, type BoardId, type LeaderboardEntry, type PlayChoice, type Player } from "@/lib/game";
 
 type FinishedRound = {
   player: Player | null;
   isFinished: boolean;
-  mode: GameMode;
+  choice: PlayChoice;
   score: number;
   durationMs: number;
   bestStreak: number;
 };
 
-const EMPTY_LEADERBOARDS: Record<GameMode, LeaderboardEntry[]> = { turkey: [], world: [] };
+export type Leaderboards = Record<BoardId, LeaderboardEntry[]>;
 
-/** Tur bitince sonucu kaydeder, sıralamayı çeker ve realtime güncellemelere abone olur. */
-export function useLeaderboard({ player, isFinished, mode, score, durationMs, bestStreak }: FinishedRound) {
-  const [leaderboards, setLeaderboards] = useState<Record<GameMode, LeaderboardEntry[]>>(EMPTY_LEADERBOARDS);
+const EMPTY_LEADERBOARDS: Leaderboards = { turkey: [], world: [], "world-hard": [] };
+
+/** Tur bitince sonucu kaydeder, üç sıralamayı da çeker ve realtime güncellemelere abone olur. */
+export function useLeaderboard({ player, isFinished, choice, score, durationMs, bestStreak }: FinishedRound) {
+  const [leaderboards, setLeaderboards] = useState<Leaderboards>(EMPTY_LEADERBOARDS);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+
+  const { mode, difficulty } = choice;
 
   useEffect(() => {
     if (!isFinished || !player) return;
@@ -29,20 +33,28 @@ export function useLeaderboard({ player, isFinished, mode, score, durationMs, be
     let channel: ReturnType<typeof supabase.channel> | undefined;
 
     const loadLeaderboards = async () => {
-      const loadMode = (gameMode: GameMode) =>
-        supabase
-          .from("leaderboard")
-          .select("user_id, display_name, avatar_url, score, duration_ms, best_streak")
-          .eq("game_mode", gameMode)
-          .order("score", { ascending: false })
-          .order("duration_ms", { ascending: true })
-          .order("best_streak", { ascending: false })
-          .limit(LEADERBOARD_LIMIT);
-
-      const [turkey, world] = await Promise.all([loadMode("turkey"), loadMode("world")]);
+      const results = await Promise.all(
+        BOARDS.map((board) =>
+          supabase
+            .from("leaderboard")
+            .select("user_id, display_name, avatar_url, score, duration_ms, best_streak")
+            .eq("game_mode", board.mode)
+            .eq("variant", board.variant)
+            .order("score", { ascending: false })
+            .order("duration_ms", { ascending: true })
+            .order("best_streak", { ascending: false })
+            .limit(LEADERBOARD_LIMIT),
+        ),
+      );
       if (!isActive) return;
-      if (turkey.error || world.error) setLeaderboardError("Sıralama yüklenemedi. Lütfen tekrar deneyin.");
-      else setLeaderboards({ turkey: turkey.data ?? [], world: world.data ?? [] });
+
+      if (results.some((result) => result.error)) {
+        setLeaderboardError("Sıralama yüklenemedi. Lütfen tekrar deneyin.");
+        return;
+      }
+      setLeaderboards(
+        BOARDS.reduce((all, board, index) => ({ ...all, [board.id]: results[index].data ?? [] }), {} as Leaderboards),
+      );
     };
 
     const saveResultAndLoadLeaderboards = async () => {
@@ -51,6 +63,7 @@ export function useLeaderboard({ player, isFinished, mode, score, durationMs, be
         display_name: player.name,
         avatar_url: player.avatarUrl,
         game_mode: mode,
+        variant: difficulty,
         score,
         duration_ms: durationMs,
         best_streak: bestStreak,
@@ -71,12 +84,12 @@ export function useLeaderboard({ player, isFinished, mode, score, durationMs, be
       isActive = false;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [bestStreak, durationMs, isFinished, mode, player, score]);
+  }, [bestStreak, difficulty, durationMs, isFinished, mode, player, score]);
 
   const resetLeaderboards = () => {
     setLeaderboards(EMPTY_LEADERBOARDS);
     setLeaderboardError(null);
   };
 
-  return { leaderboards, leaderboardError, resetLeaderboards };
+  return { leaderboards, leaderboardError, resetLeaderboards, playedBoardId: boardIdFor(choice) };
 }

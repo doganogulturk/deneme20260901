@@ -1,8 +1,10 @@
-import Image from "next/image";
-import { formatTime, GAME_DURATION_SECONDS, questionName, type AnswerState, type Player, type Question } from "@/lib/game";
+import { PlayerBadge } from "./PlayerBadge";
+import { RoundControls } from "./RoundControls";
+import { formatTime, GAME_DURATION_SECONDS, questionName, type AnswerState, type PlayChoice, type Player, type Question } from "@/lib/game";
 
 type GameTopBarProps = {
   player: Player | null;
+  choice: PlayChoice;
   question: Question | undefined;
   answerState: AnswerState;
   answers: AnswerState[];
@@ -10,6 +12,7 @@ type GameTopBarProps = {
   remainingQuestionSeconds: number;
   remainingGameSeconds: number;
   score: number;
+  onPlay: (choice: PlayChoice) => void;
   onSignOut: () => void;
 };
 
@@ -22,6 +25,8 @@ function timeTone(remainingGameSeconds: number, tones: [danger: string, warning:
 /** Oyun sırasında haritaya azami alan bırakmak için tüm durum bilgisini tek satırda toplar. */
 export function GameTopBar({
   player,
+  choice,
+  onPlay,
   question,
   answerState,
   answers,
@@ -35,36 +40,8 @@ export function GameTopBar({
     <header className="shrink-0 border-b border-slate-200 bg-white">
       {/* Üç sütun: soru adı, yanlardaki içerik ne kadar geniş olursa olsun tam ortada kalır. */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 lg:gap-6 lg:px-5 lg:py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          {player && (
-            <>
-              {player.avatarUrl ? (
-                <Image
-                  alt=""
-                  className="h-7 w-7 shrink-0 rounded-full border border-cyan-200 object-cover lg:h-9 lg:w-9"
-                  height={36}
-                  referrerPolicy="no-referrer"
-                  src={player.avatarUrl}
-                  unoptimized
-                  width={36}
-                />
-              ) : (
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-xs font-bold text-cyan-700 lg:h-9 lg:w-9 lg:text-sm">
-                  {player.name.slice(0, 1).toUpperCase()}
-                </span>
-              )}
-              <div className="hidden min-w-0 sm:block">
-                <p className="truncate text-xs font-bold text-slate-700 lg:text-sm" title={player.name}>{player.name}</p>
-                <button
-                  className="text-[10px] font-semibold text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline lg:text-xs"
-                  onClick={onSignOut}
-                  type="button"
-                >
-                  Çıkış yap
-                </button>
-              </div>
-            </>
-          )}
+        <div className="flex min-w-0 items-center">
+          <PlayerBadge align="left" onSignOut={onSignOut} player={player} size="sm" />
         </div>
 
         <div className="flex min-w-0 items-center justify-center gap-2 lg:gap-3">
@@ -96,6 +73,8 @@ export function GameTopBar({
           <p className={`shrink-0 text-sm font-bold tabular-nums lg:text-xl ${timeTone(remainingGameSeconds, ["text-rose-600", "text-amber-600", "text-slate-600"])}`}>
             {formatTime(remainingGameSeconds)}
           </p>
+
+          <RoundControls choice={choice} onPlay={onPlay} />
         </div>
       </div>
 

@@ -4,6 +4,7 @@ create table if not exists public.game_results (
   display_name text not null default 'Oyuncu',
   avatar_url text,
   game_mode text not null default 'turkey' check (game_mode in ('turkey', 'world')),
+  variant text not null default 'normal' check (variant in ('normal', 'hard')),
   score smallint not null check (score between 0 and 10),
   duration_ms integer not null check (duration_ms >= 0),
   best_streak smallint not null check (best_streak between 0 and 10),
@@ -14,7 +15,13 @@ alter table public.game_results
   add column if not exists display_name text,
   add column if not exists avatar_url text,
   add column if not exists game_mode text,
-  add column if not exists duration_ms integer;
+  add column if not exists duration_ms integer,
+  add column if not exists variant text;
+
+-- Mevcut satırların tamamı 58 ülkelik havuzla oynandı, yani gerçekten "normal" turlar.
+update public.game_results
+set variant = 'normal'
+where variant is null;
 
 update public.game_results
 set game_mode = 'turkey'
@@ -33,17 +40,23 @@ alter table public.game_results
   alter column display_name set default 'Oyuncu',
   alter column game_mode set not null,
   alter column game_mode set default 'turkey',
-  alter column duration_ms set not null;
+  alter column duration_ms set not null,
+  alter column variant set not null,
+  alter column variant set default 'normal';
 
 alter table public.game_results
   drop constraint if exists game_results_game_mode_check,
   add constraint game_results_game_mode_check check (game_mode in ('turkey', 'world'));
 
-create index if not exists game_results_user_id_game_mode_score_created_at_idx
-on public.game_results (user_id, game_mode, score desc, duration_ms asc, best_streak desc, created_at asc);
+alter table public.game_results
+  drop constraint if exists game_results_variant_check,
+  add constraint game_results_variant_check check (variant in ('normal', 'hard'));
 
-create index if not exists game_results_game_mode_score_idx
-on public.game_results (game_mode, score desc, duration_ms asc, best_streak desc, created_at asc);
+create index if not exists game_results_user_id_game_mode_variant_score_idx
+on public.game_results (user_id, game_mode, variant, score desc, duration_ms asc, best_streak desc, created_at asc);
+
+create index if not exists game_results_game_mode_variant_score_idx
+on public.game_results (game_mode, variant, score desc, duration_ms asc, best_streak desc, created_at asc);
 
 alter table public.game_results enable row level security;
 
@@ -68,16 +81,17 @@ drop view if exists public.leaderboard;
 create view public.leaderboard
 with (security_invoker = true)
 as
-select distinct on (user_id, game_mode)
+select distinct on (user_id, game_mode, variant)
   user_id,
   display_name,
   avatar_url,
   game_mode,
+  variant,
   score,
   duration_ms,
   best_streak
 from public.game_results
-order by user_id, game_mode, score desc, duration_ms asc, best_streak desc, created_at asc;
+order by user_id, game_mode, variant, score desc, duration_ms asc, best_streak desc, created_at asc;
 
 alter table public.game_results replica identity full;
 

@@ -1,5 +1,5 @@
 import { type Province } from "@/lib/turkish-plates";
-import { type Country } from "@/lib/world-countries";
+import { type Country, type WorldDifficulty } from "@/lib/world-countries";
 
 export type AnswerState = "correct" | "incorrect" | null;
 export type GameMode = "turkey" | "world";
@@ -15,6 +15,14 @@ export type LeaderboardEntry = {
   best_streak: number;
 };
 
+/** Oyuncunun giriş ekranında seçtiği tur. Giriş gerekiyorsa giriş bitene kadar saklanır. */
+export type PlayChoice = { mode: GameMode; difficulty: WorldDifficulty };
+
+export function choiceLabel({ mode, difficulty }: PlayChoice): string {
+  if (mode === "turkey") return "Türkiye";
+  return difficulty === "hard" ? "Dünya · Zor" : "Dünya · Normal";
+}
+
 export const GAME_DURATION_MS = 120000;
 export const GAME_DURATION_SECONDS = GAME_DURATION_MS / 1000;
 export const QUESTION_TRANSITION_MS = 3000;
@@ -25,12 +33,30 @@ export const MAP_URLS: Record<GameMode, string> = {
   world: "/maps/world.svg",
 };
 
-export const MODE_COPY: Record<GameMode, { mapLabel: string; tabLabel: string }> = {
-  turkey: { mapLabel: "Türkiye il haritası", tabLabel: "Türkiye" },
-  world: { mapLabel: "Dünya ülkeleri haritası", tabLabel: "Dünya" },
+export const MAP_LABELS: Record<GameMode, string> = {
+  turkey: "Türkiye il haritası",
+  world: "Dünya ülkeleri haritası",
 };
 
 export const GAME_MODES: GameMode[] = ["turkey", "world"];
+
+/** Her oynanış türünün kendi sıralaması var; Zor turlar Normal'lerle yarışmaz. */
+export type BoardId = "turkey" | "world" | "world-hard";
+
+export const BOARDS: { id: BoardId; label: string; mode: GameMode; variant: WorldDifficulty }[] = [
+  { id: "turkey", label: "Türkiye", mode: "turkey", variant: "normal" },
+  { id: "world", label: "Dünya", mode: "world", variant: "normal" },
+  { id: "world-hard", label: "Dünya · Zor", mode: "world", variant: "hard" },
+];
+
+export function choiceForBoard(board: { mode: GameMode; variant: WorldDifficulty }): PlayChoice {
+  return { mode: board.mode, difficulty: board.variant };
+}
+
+export function boardIdFor({ mode, difficulty }: PlayChoice): BoardId {
+  if (mode === "turkey") return "turkey";
+  return difficulty === "hard" ? "world-hard" : "world";
+}
 
 export const LOCATION_SELECTOR: Record<GameMode, string> = {
   turkey: "g[data-plakakodu]",
